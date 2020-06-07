@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 from traitlets import Dict
 
 TEMPLATE = r"""
-FROM buildpack-deps:bionic
+FROM {{ base_image }}
 
 # avoid prompts from apt
 ENV DEBIAN_FRONTEND=noninteractive
@@ -230,6 +230,10 @@ class BuildPack:
                 "Windows environment detected. Note that Windows "
                 "support is experimental in repo2docker."
             )
+
+    def get_base_image(self):
+        """Image name to use as base."""
+        return "buildpack-deps:bionic"
 
     def get_packages(self):
         """
@@ -563,6 +567,7 @@ class BuildPack:
         }
 
         return t.render(
+            base_image=self.get_base_image(),
             packages=sorted(self.get_packages()),
             path=self.get_path(),
             build_env=self.get_build_env(),
