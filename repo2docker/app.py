@@ -136,6 +136,14 @@ class Repo2Docker(Application):
         """,
     )
 
+    picked_buildpack = Any(
+        PythonBuildPack,
+        config=True,
+        help="""
+            The build pack that is selected for building.
+            """,
+    )
+
     # Git is our content provider of last resort. This is to maintain the
     # old behaviour when git and local directories were the only supported
     # content providers. We can detect local directories from the path, but
@@ -684,6 +692,7 @@ class Repo2Docker(Application):
                 else:
                     picked_buildpack = self.default_buildpack()
 
+                self.picked_buildpack = picked_buildpack
                 picked_buildpack.appendix = self.appendix
                 # Add metadata labels
                 picked_buildpack.labels["repo2docker.version"] = self.version
