@@ -220,6 +220,7 @@ class BuildPack:
     and there are *some* general guarantees of ordering.
 
     """
+    template = TEMPLATE
 
     def __init__(self):
         self.log = logging.getLogger("repo2docker")
@@ -523,7 +524,7 @@ class BuildPack:
         """
         Render BuildPack into Dockerfile
         """
-        t = jinja2.Template(TEMPLATE)
+        t = jinja2.Template(self.template)
 
         build_script_directives = []
         last_user = "root"
