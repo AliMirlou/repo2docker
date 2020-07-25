@@ -21,8 +21,8 @@ from ruamel.yaml import YAML
 
 # Docker image version can be different than conda version,
 # since miniconda3 docker images seem to lag conda releases.
-MINICONDA_DOCKER_VERSION = "4.7.12"
-CONDA_VERSION = "4.7.12"
+MINICONDA_DOCKER_VERSION = "4.8.2"
+CONDA_VERSION = "4.8.3"
 
 HERE = pathlib.Path(os.path.dirname(os.path.abspath(__file__)))
 

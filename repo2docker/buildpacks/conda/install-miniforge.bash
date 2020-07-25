@@ -3,7 +3,7 @@
 set -ex
 
 cd $(dirname $0)
-MINIFORGE_VERSION=4.8.2-1
+MINIFORGE_VERSION=4.8.3-4
 # SHA256 for installers can be obtained from https://github.com/conda-forge/miniforge/releases
 SHA256SUM="4f897e503bd0edfb277524ca5b6a5b14ad818b3198c2f07a36858b7d88c928db"
 
@@ -42,14 +42,6 @@ conda config --system --set channel_priority "flexible"
 echo "installing notebook env:"
 cat /tmp/environment.yml
 conda env create -p ${NB_PYTHON_PREFIX} -f /tmp/environment.yml
-
-# Install jupyter-offline-notebook to allow users to download notebooks
-# after the server connection has been lost
-# This will install and enable the extension for jupyter notebook
-${NB_PYTHON_PREFIX}/bin/python -m pip install jupyter-offlinenotebook==0.1.0
-# and this installs it for lab. Keep going if the lab version is incompatible
-# with the extension
-${NB_PYTHON_PREFIX}/bin/jupyter labextension install jupyter-offlinenotebook || true
 
 # empty conda history file,
 # which seems to result in some effective pinning of packages in the initial env,
