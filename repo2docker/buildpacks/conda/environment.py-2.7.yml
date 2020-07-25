@@ -1,4 +1,4 @@
+# AUTO GENERATED FROM environment.yml, DO NOT MANUALLY MODIFY
+# Generated on 2020-07-25 19:18:20 UTC
 dependencies:
 - python=2.7.*
-- ipykernel==4.8.2
-- wcwidth==0.1.9
