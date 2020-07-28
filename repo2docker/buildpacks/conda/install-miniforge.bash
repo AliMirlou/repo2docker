@@ -5,7 +5,7 @@ set -ex
 cd $(dirname $0)
 MINIFORGE_VERSION=4.8.3-4
 # SHA256 for installers can be obtained from https://github.com/conda-forge/miniforge/releases
-SHA256SUM="4f897e503bd0edfb277524ca5b6a5b14ad818b3198c2f07a36858b7d88c928db"
+SHA256SUM="24951262a126582f5f2e1cf82c9cd0fa20e936ef3309fdb8397175f29e647646"
 
 URL="https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/Miniforge3-${MINIFORGE_VERSION}-Linux-x86_64.sh"
 INSTALLER_PATH=/tmp/miniforge-installer.sh
