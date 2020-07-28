@@ -719,7 +719,7 @@ class Repo2Docker(Application):
                         build_args["REPO_DIR"] = self.target_repo_dir
                     self.log.info(
                         "Using %s builder\n",
-                        bp.__class__.__name__,
+                        picked_buildpack.__class__.__name__,
                         extra=dict(phase="building"),
                     )
 
