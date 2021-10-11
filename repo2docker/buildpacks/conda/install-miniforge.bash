@@ -1,20 +1,23 @@
 #!/bin/bash
-# This downloads and installs a pinned version of miniconda
+# This downloads and installs a pinned version of miniforge
+# and sets up the base environment
 set -ex
 
-cd $(dirname $0)
-MINIFORGE_VERSION=4.8.3-4
-# SHA256 for installers can be obtained from https://github.com/conda-forge/miniforge/releases
-SHA256SUM="24951262a126582f5f2e1cf82c9cd0fa20e936ef3309fdb8397175f29e647646"
 
-URL="https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/Miniforge3-${MINIFORGE_VERSION}-Linux-x86_64.sh"
+cd $(dirname $0)
+MINIFORGE_VERSION=4.9.2-2
+MAMBA_VERSION=0.7.4
+# SHA256 for installers can be obtained from https://github.com/conda-forge/miniforge/releases
+SHA256SUM="7a7bfaff87680298304a97ba69bcf92f66c810995a7155a2918b99fafb8ca1dc"
+
+URL="https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/Mambaforge-${MINIFORGE_VERSION}-Linux-x86_64.sh"
 INSTALLER_PATH=/tmp/miniforge-installer.sh
 
 # make sure we don't do anything funky with user's $HOME
 # since this is run as root
 unset HOME
 
-curl -sL -o ${INSTALLER_PATH} $URL
+time curl -sL -o ${INSTALLER_PATH} $URL
 chmod +x ${INSTALLER_PATH}
 
 # check sha256 checksum
@@ -23,7 +26,7 @@ if ! echo "${SHA256SUM}  ${INSTALLER_PATH}" | sha256sum  --quiet -c -; then
     exit 1
 fi
 
-bash ${INSTALLER_PATH} -b -p ${CONDA_DIR}
+time bash ${INSTALLER_PATH} -b -p ${CONDA_DIR}
 export PATH="${CONDA_DIR}/bin:$PATH"
 
 # Preserve behavior of miniconda - packages come from conda-forge + defaults
@@ -39,29 +42,43 @@ echo 'update_dependencies: false' >> ${CONDA_DIR}/.condarc
 # avoid future changes to default channel_priority behavior
 conda config --system --set channel_priority "flexible"
 
-echo "installing notebook env:"
-cat /tmp/environment.yml
-conda env create -p ${NB_PYTHON_PREFIX} -f /tmp/environment.yml
+time mamba install -y mamba==${MAMBA_VERSION}
 
+echo "installing notebook env:"
+cat "${NB_ENVIRONMENT_FILE}"
+
+time mamba create -p ${NB_PYTHON_PREFIX} --file "${NB_ENVIRONMENT_FILE}"
+
+if [[ ! -z "${NB_REQUIREMENTS_FILE:-}" ]]; then
+    echo "installing pip requirements"
+    cat "${NB_REQUIREMENTS_FILE}"
+    ${NB_PYTHON_PREFIX}/bin/python -mpip install --no-cache --no-deps -r "${NB_REQUIREMENTS_FILE}"
+fi
 # empty conda history file,
 # which seems to result in some effective pinning of packages in the initial env,
 # which we don't intend.
 # this file must not be *removed*, however
 echo '' > ${NB_PYTHON_PREFIX}/conda-meta/history
 
-if [[ -f /tmp/kernel-environment.yml ]]; then
+if [[ ! -z "${KERNEL_ENVIRONMENT_FILE:-}" ]]; then
     # install kernel env and register kernelspec
     echo "installing kernel env:"
-    cat /tmp/kernel-environment.yml
+    cat "${KERNEL_ENVIRONMENT_FILE}"
+    time mamba create -p ${KERNEL_PYTHON_PREFIX} --file "${KERNEL_ENVIRONMENT_FILE}"
 
-    conda env create -p ${KERNEL_PYTHON_PREFIX} -f /tmp/kernel-environment.yml
+    if [[ ! -z "${KERNEL_REQUIREMENTS_FILE:-}" ]]; then
+        echo "installing pip requirements for kernel"
+        cat "${KERNEL_REQUIREMENTS_FILE}"
+        ${KERNEL_PYTHON_PREFIX}/bin/python -mpip install --no-cache --no-deps -r "${KERNEL_REQUIREMENTS_FILE}"
+    fi
+
     ${KERNEL_PYTHON_PREFIX}/bin/ipython kernel install --prefix "${NB_PYTHON_PREFIX}"
     echo '' > ${KERNEL_PYTHON_PREFIX}/conda-meta/history
-    conda list -p ${KERNEL_PYTHON_PREFIX}
+    mamba list -p ${KERNEL_PYTHON_PREFIX}
 fi
 
 # Clean things out!
-conda clean --all -f -y
+time mamba clean --all -f -y
 
 # Remove the big installer so we don't increase docker image size too much
 rm ${INSTALLER_PATH}
@@ -71,5 +88,5 @@ rm -rf /root/.cache
 
 chown -R $NB_USER:$NB_USER ${CONDA_DIR}
 
-conda list -n root
-conda list -p ${NB_PYTHON_PREFIX}
+mamba list -n root
+mamba list -p ${NB_PYTHON_PREFIX}

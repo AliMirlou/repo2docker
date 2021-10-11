@@ -1,7 +1,7 @@
 """BuildPack for conda environments"""
 import os
 import re
-from collections import Mapping
+from collections.abc import Mapping
 
 from ruamel.yaml import YAML
 
@@ -23,6 +23,18 @@ class CondaBuildPack(BaseImage):
 
     """
 
+    # The kernel conda environment file, if any.
+    # As an absolute path within the container.
+    _kernel_environment_file = ""
+    # extra pip requirements.txt for the kernel
+    _kernel_requirements_file = ""
+
+    # The notebook server environment file.
+    # As an absolute path within the container.
+    _nb_environment_file = ""
+    # extra pip requirements.txt for the notebook env
+    _nb_requirements_file = ""
+
     def get_build_env(self):
         """Return environment variables to be set.
 
@@ -30,12 +42,30 @@ class CondaBuildPack(BaseImage):
         the `NB_PYTHON_PREFIX` to the location of the jupyter binary.
 
         """
+        if not self._nb_environment_file:
+            # get_build_script_files locates requirements/environment files,
+            # populating the _nb_environment_file attribute and others.
+            # FIXME: move file detection and initialization of those attributes to its own step?
+            self.get_build_script_files()
+
         env = super().get_build_env() + [
             ("CONDA_DIR", "${APP_BASE}/conda"),
             ("NB_PYTHON_PREFIX", "${CONDA_DIR}/envs/notebook"),
+            ("NB_ENVIRONMENT_FILE", self._nb_environment_file),
         ]
-        if self.py2:
-            env.append(("KERNEL_PYTHON_PREFIX", "${CONDA_DIR}/envs/kernel"))
+        if self._nb_requirements_file:
+            env.append(("NB_REQUIREMENTS_FILE", self._nb_requirements_file))
+
+        if self._kernel_environment_file:
+            # if kernel environment file is separate
+            env.extend(
+                [
+                    ("KERNEL_PYTHON_PREFIX", "${CONDA_DIR}/envs/kernel"),
+                    ("KERNEL_ENVIRONMENT_FILE", self._kernel_environment_file),
+                ]
+            )
+            if self._kernel_requirements_file:
+                env.append(("KERNEL_REQUIREMENTS_FILE", self._kernel_requirements_file))
         else:
             env.append(("KERNEL_PYTHON_PREFIX", "${NB_PYTHON_PREFIX}"))
         return env
@@ -79,8 +109,9 @@ class CondaBuildPack(BaseImage):
             (
                 "root",
                 r"""
-                bash /tmp/install-miniforge.bash && \
-                rm /tmp/install-miniforge.bash /tmp/environment.yml
+                TIMEFORMAT='time: %3R' \
+                bash -c 'time /tmp/install-miniforge.bash' && \
+                rm -rf /tmp/install-miniforge.bash /tmp/env
                 """,
             )
         ]
@@ -113,20 +144,38 @@ class CondaBuildPack(BaseImage):
         # major Python versions during upgrade.
         # If no version is specified or no matching X.Y version is found,
         # the default base environment is used.
-        frozen_name = "environment.frozen.yml"
+        frozen_name = "environment.lock"
+        pip_frozen_name = "requirements.txt"
         if py_version:
             if self.py2:
                 # python 2 goes in a different env
                 files[
-                    "conda/environment.py-2.7.frozen.yml"
-                ] = "/tmp/kernel-environment.yml"
+                    "conda/environment.py-2.7.lock"
+                ] = self._kernel_environment_file = "/tmp/env/kernel-environment.lock"
+                # additional pip requirements for kernel env
+                if os.path.exists(os.path.join(HERE, "requirements.py-2.7.txt")):
+                    files[
+                        "conda/requirements.py-2.7.txt"
+                    ] = (
+                        self._kernel_requirements_file
+                    ) = "/tmp/env/kernel-requirements.txt"
             else:
-                py_frozen_name = "environment.py-{py}.frozen.yml".format(py=py_version)
+                py_frozen_name = f"environment.py-{py_version}.lock"
                 if os.path.exists(os.path.join(HERE, py_frozen_name)):
                     frozen_name = py_frozen_name
-                else:
-                    self.log.warning("No frozen env: %s", py_frozen_name)
-        files["conda/" + frozen_name] = "/tmp/environment.yml"
+                    pip_frozen_name = f"requirements.py-{py_version}.pip"
+                if not frozen_name:
+                    self.log.warning(f"No frozen env for {py_version}")
+        files[
+            "conda/" + frozen_name
+        ] = self._nb_environment_file = "/tmp/env/environment.lock"
+
+        # add requirements.txt, if present
+        if os.path.exists(os.path.join(HERE, pip_frozen_name)):
+            files[
+                "conda/" + pip_frozen_name
+            ] = self._nb_requirements_file = "/tmp/env/requirements.txt"
+
         files.update(super().get_build_script_files())
         return files
 
@@ -209,9 +258,9 @@ class CondaBuildPack(BaseImage):
 
     @property
     def r_version(self):
-        """Detect the Python version for a given `environment.yml`
+        """Detect the R version for a given `environment.yml`
 
-        Will return 'x.y' if version is found (e.g '3.6'),
+        Will return 'x.y.z' if version is found (e.g '4.1.1'),
         or a Falsy empty string '' if not found.
 
         """
@@ -266,8 +315,7 @@ class CondaBuildPack(BaseImage):
         return assemble_files
 
     def get_env_scripts(self):
-        """Return series of build-steps specific to this source repository.
-        """
+        """Return series of build-steps specific to this source repository."""
         scripts = []
         environment_yml = self.binder_path("environment.yml")
         env_prefix = "${KERNEL_PYTHON_PREFIX}" if self.py2 else "${NB_PYTHON_PREFIX}"
@@ -276,9 +324,11 @@ class CondaBuildPack(BaseImage):
                 (
                     "${NB_USER}",
                     r"""
-                conda env update -p {0} -f "{1}" && \
-                conda clean --all -f -y && \
-                conda list -p {0}
+                TIMEFORMAT='time: %3R' \
+                bash -c 'time mamba env update -p {0} -f "{1}" && \
+                time mamba clean --all -f -y && \
+                mamba list -p {0} \
+                '
                 """.format(
                         env_prefix, environment_yml
                     ),
@@ -294,9 +344,9 @@ class CondaBuildPack(BaseImage):
                 (
                     "${NB_USER}",
                     r"""
-                conda install -p {0} r-base{1} r-irkernel={2} r-devtools && \
-                conda clean --all -f -y && \
-                conda list -p {0}
+                mamba install -p {0} r-base{1} r-irkernel={2} r-devtools -y && \
+                mamba clean --all -f -y && \
+                mamba list -p {0}
                 """.format(
                         env_prefix, r_pin, IRKERNEL_VERSION
                     ),
@@ -309,7 +359,8 @@ class CondaBuildPack(BaseImage):
                     r"""
                     echo auth-none=1 >> /etc/rstudio/rserver.conf && \
                     echo auth-minimum-user-id=0 >> /etc/rstudio/rserver.conf && \
-                    echo "rsession-which-r={0}/bin/R" >> /etc/rstudio/rserver.conf
+                    echo "rsession-which-r={0}/bin/R" >> /etc/rstudio/rserver.conf && \
+                    echo www-frame-origin=same >> /etc/rstudio/rserver.conf
                     """.format(
                         env_prefix
                     ),
@@ -339,6 +390,5 @@ class CondaBuildPack(BaseImage):
         return scripts
 
     def detect(self):
-        """Check if current repo should be built with the Conda BuildPack.
-        """
+        """Check if current repo should be built with the Conda BuildPack."""
         return os.path.exists(self.binder_path("environment.yml")) and super().detect()

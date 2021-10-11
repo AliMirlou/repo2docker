@@ -1,4 +1,5 @@
-# AUTO GENERATED FROM environment.yml, DO NOT MANUALLY MODIFY
-# Generated on 2020-07-25 19:18:20 UTC
+channels:
+- conda-forge
 dependencies:
 - python=2.7.*
+- pip
