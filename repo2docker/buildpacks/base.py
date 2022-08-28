@@ -103,7 +103,7 @@ COPY --chown={{ user }}:{{ user }} {{ src }} {{ dst }}
 # ensure root user after build scripts
 USER root
 
-# Allow target path repo is cloned to be configurable
+# Allow target path of repo that is cloned to be configurable
 ARG REPO_DIR=${HOME}
 ENV REPO_DIR ${REPO_DIR}
 WORKDIR ${REPO_DIR}
@@ -334,7 +334,7 @@ class BuildPack:
         into the container image, and hence can not reference stuff
         from the repository. When the build scripts are done, the
         container image should be in a state where it is generically
-        re-useable for building various other repositories with
+        re-usable for building various other repositories with
         similar environments.
 
         You can use environment variable substitutions in both the
@@ -500,7 +500,7 @@ class BuildPack:
         # create a mapping between:
         #   1. Location of a build script in a Docker build context
         #      ('assemble_files/<escaped-file-path-truncated>-<6-chars-of-its-hash>')
-        #   2. Location of the aforemention script in the Docker image
+        #   2. Location of the aforementioned script in the Docker image
         # Base template basically does: COPY <1.> <2.>
         build_script_files = {
             self.generate_build_context_filename(k)[0]: v
