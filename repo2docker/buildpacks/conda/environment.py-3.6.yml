@@ -1,7 +1,2 @@
-# AUTO GENERATED FROM environment.yml, DO NOT MANUALLY MODIFY
-# Generated on 2021-10-06 07:32:48 UTC
-channels:
-- conda-forge
-dependencies:
-- python=3.6.*
-- pip
+# py3.6 is not being auto-generated from this file anymore
+# update environment.py-3.6.frozen.yml directly

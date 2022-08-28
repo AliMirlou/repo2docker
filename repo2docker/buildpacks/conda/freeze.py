@@ -9,6 +9,7 @@ Usage:
 python freeze.py [3.8]
 """
 
+from argparse import ArgumentParser
 from datetime import datetime
 import os
 import pathlib
@@ -61,6 +62,7 @@ def freeze(env_file, frozen_file, platform="linux-64"):
             # FIXME: adopt micromamba after ordering is fixed
             # https://github.com/conda-incubator/conda-lock/issues/79
             "--mamba",
+            "--kind=explicit",
             f"--platform={platform}",
             f"--filename-template={frozen_template}",
             f"--file={env_file}",
@@ -106,10 +108,21 @@ def set_python(py_env_file, py):
 
 
 if __name__ == "__main__":
-    # allow specifying which Pythons to update on argv
-    pys = sys.argv[1:] or ("2.7", "3.6", "3.7", "3.8", "3.9")
+    parser = ArgumentParser(
+        description=(
+            "Refreeze conda environments. See "
+            "https://repo2docker.readthedocs.io/en/latest/contributing/tasks.html#update-and-freeze-buildpack-dependencies"
+        )
+    )
+    parser.add_argument(
+        "py",
+        nargs="*",
+        help="Python version(s) to update and freeze",
+        default=("3.7", "3.8", "3.9", "3.10"),
+    )
+    args = parser.parse_args()
     default_py = "3.7"
-    for py in pys:
+    for py in args.py:
         env_file = pathlib.Path(str(ENV_FILE_T).format(py=py))
         set_python(env_file, py)
         frozen_file = pathlib.Path(os.path.splitext(env_file)[0] + ".lock")

@@ -47,6 +47,10 @@ class Repo2Docker(Application):
     name = "jupyter-repo2docker"
     version = __version__
     description = __doc__
+    # disable aliases/flags because we don't use the traitlets for CLI parsing
+    # other than --Class.trait=value
+    aliases = {}
+    flags = {}
 
     @default("log_level")
     def _default_log_level(self):
@@ -243,6 +247,26 @@ class Repo2Docker(Application):
         Can be used to customize the resulting image after all
         standard build steps finish.
         """,
+    )
+
+    labels = Dict(
+        {},
+        help="""
+        Extra labels to set on the final image.
+
+        Each Label is a key-value pair, with the key being the name of the label
+        and the value its value.
+        """,
+        config=True,
+    )
+
+    extra_build_args = Dict(
+        {},
+        help="""
+        Extra build args to pass to the image build process.
+        This is pretty much only useful for custom Dockerfile based builds.
+        """,
+        config=True,
     )
 
     json_logs = Bool(
@@ -478,20 +502,20 @@ class Repo2Docker(Application):
             extra=dict(phase="failed"),
         )
 
-    def initialize(self):
+    def initialize(self, *args, **kwargs):
         """Init repo2docker configuration before start"""
         # FIXME: Remove this function, move it to setters / traitlet reactors
+        self.log = logging.getLogger("repo2docker")
+        self.log.setLevel(self.log_level)
+        logHandler = logging.StreamHandler()
+        self.log.handlers = []
+        self.log.addHandler(logHandler)
         if self.json_logs:
             # register JSON excepthook to avoid non-JSON output on errors
             sys.excepthook = self.json_excepthook
             # Need to reset existing handlers, or we repeat messages
-            logHandler = logging.StreamHandler()
             formatter = jsonlogger.JsonFormatter()
             logHandler.setFormatter(formatter)
-            self.log = logging.getLogger("repo2docker")
-            self.log.handlers = []
-            self.log.addHandler(logHandler)
-            self.log.setLevel(self.log_level)
         else:
             # due to json logger stuff above,
             # our log messages include carriage returns, newlines, etc.
@@ -756,23 +780,28 @@ class Repo2Docker(Application):
                 picked_buildpack.labels["repo2docker.repo"] = repo_label
                 picked_buildpack.labels["repo2docker.ref"] = self.ref
 
+                picked_buildpack.labels.update(self.labels)
+
+                build_args = {
+                    "NB_USER": self.user_name,
+                    "NB_UID": str(self.user_id),
+                }
+                if self.target_repo_dir:
+                    build_args["REPO_DIR"] = self.target_repo_dir
+                build_args.update(self.extra_build_args)
+
                 if self.dry_run:
-                    print(picked_buildpack.render())
+                    print(picked_buildpack.render(build_args))
                 else:
                     self.log.debug(
-                        picked_buildpack.render(), extra=dict(phase="building")
+                        picked_buildpack.render(build_args),
+                        extra=dict(phase="building"),
                     )
                     if self.user_id == 0:
                         raise ValueError(
                             "Root as the primary user in the image is not permitted."
                         )
 
-                    build_args = {
-                        "NB_USER": self.user_name,
-                        "NB_UID": str(self.user_id),
-                    }
-                    if self.target_repo_dir:
-                        build_args["REPO_DIR"] = self.target_repo_dir
                     self.log.info(
                         "Using %s builder\n",
                         picked_buildpack.__class__.__name__,
