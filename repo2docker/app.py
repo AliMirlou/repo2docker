@@ -753,6 +753,10 @@ class Repo2Docker(Application):
                 # avoid having to indent the build code by an extra level
                 return
 
+            files = os.listdir(checkout_path)
+            if len(files) == 1 and os.path.isdir(files[0]):
+                checkout_path = os.path.join(checkout_path, files[0])
+
             if self.subdir:
                 checkout_path = os.path.join(checkout_path, self.subdir)
                 if not os.path.isdir(checkout_path):
