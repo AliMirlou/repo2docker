@@ -755,7 +755,7 @@ class Repo2Docker(Application):
 
             files = os.listdir(checkout_path)
             if len(files) == 1 and os.path.isdir(files[0]):
-                checkout_path = os.path.join(checkout_path, files[0])
+                self.subdir = files[0]
 
             if self.subdir:
                 checkout_path = os.path.join(checkout_path, self.subdir)
