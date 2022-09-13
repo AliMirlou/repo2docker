@@ -82,6 +82,3 @@ rm -rf /root/.cache
 chown -R $NB_USER:$NB_USER ${CONDA_DIR}
 
 ${MAMBA_EXE} list -p ${NB_PYTHON_PREFIX}
-
-# Set NPM config
-${NB_PYTHON_PREFIX}/bin/npm config --global set prefix ${NPM_DIR}

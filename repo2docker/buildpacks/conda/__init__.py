@@ -54,9 +54,6 @@ class CondaBuildPack(BaseImage):
         env = super().get_build_env() + [
             ("CONDA_DIR", "${APP_BASE}/conda"),
             ("NB_PYTHON_PREFIX", "${CONDA_DIR}/envs/notebook"),
-            # We install npm / node from conda-forge
-            ("NPM_DIR", "${APP_BASE}/npm"),
-            ("NPM_CONFIG_GLOBALCONFIG", "${NPM_DIR}/npmrc"),
             ("NB_ENVIRONMENT_FILE", self._nb_environment_file),
             ("MAMBA_ROOT_PREFIX", "${CONDA_DIR}"),
             # this exe should be used for installs after bootstrap with micromamba
@@ -95,8 +92,6 @@ class CondaBuildPack(BaseImage):
         if self.py2:
             path.insert(0, "${KERNEL_PYTHON_PREFIX}/bin")
         path.insert(0, "${NB_PYTHON_PREFIX}/bin")
-        # This is at the end of $PATH, for backwards compat reasons
-        path.append("${NPM_DIR}/bin")
         return path
 
     def get_build_scripts(self):
@@ -124,13 +119,6 @@ class CondaBuildPack(BaseImage):
                 TIMEFORMAT='time: %3R' \
                 bash -c 'time /tmp/install-base-env.bash' && \
                 rm -rf /tmp/install-base-env.bash /tmp/env
-                """,
-            ),
-            (
-                "root",
-                r"""
-                mkdir -p ${NPM_DIR} && \
-                chown -R ${NB_USER}:${NB_USER} ${NPM_DIR}
                 """,
             ),
         ]
