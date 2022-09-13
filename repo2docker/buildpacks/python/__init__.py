@@ -10,7 +10,7 @@ class PythonBuildPack(CondaBuildPack):
 
     @property
     def python_version(self):
-        if hasattr(self, "_python_version"):
+        if self._python_version:
             return self._python_version
 
         try:

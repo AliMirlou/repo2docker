@@ -27,13 +27,8 @@ class PipfileBuildPack(CondaBuildPack):
         Falsy empty string '' if not found.
         """
 
-        if hasattr(self, "_python_version"):
+        if hasattr(self, "_python_version") and self._python_version:
             return self._python_version
-
-        files_to_search_in_order = [
-            self.binder_path("Pipfile.lock"),
-            self.binder_path("Pipfile"),
-        ]
 
         lockfile = self.binder_path("Pipfile.lock")
         requires_sources = []
@@ -120,7 +115,6 @@ class PipfileBuildPack(CondaBuildPack):
                     )
                 )
 
-        pipfile = self.binder_path("Pipfile")
         pipfile_lock = self.binder_path("Pipfile.lock")
 
         # A Pipfile(.lock) can contain relative references, so we need to be

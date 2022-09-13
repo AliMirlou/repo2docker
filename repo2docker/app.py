@@ -41,6 +41,19 @@ from .engine import BuildError, ContainerEngineException, ImageLoadError
 from .utils import ByteSpecification, chdir
 
 
+def _get_free_port():
+    """
+    Hacky method to get a free random port on local host
+    """
+    import socket
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
 class Repo2Docker(Application):
     """An application for converting git repositories to docker images"""
 
@@ -51,6 +64,9 @@ class Repo2Docker(Application):
     # other than --Class.trait=value
     aliases = {}
     flags = {}
+
+    hostname = ""
+    port = ""
 
     @default("log_level")
     def _default_log_level(self):
@@ -450,6 +466,7 @@ class Repo2Docker(Application):
         based on URL, is found.
         """
         picked_content_provider = None
+        spec = None
         for ContentProvider in self.content_providers:
             cp = ContentProvider()
             spec = cp.detect(url, ref=ref)
@@ -550,7 +567,7 @@ class Repo2Docker(Application):
                 line = line.decode("utf-8", errors="replace")
                 try:
                     progress = json.loads(line)
-                except Exception as e:
+                except Exception:
                     self.log.warning("Not a JSON progress line: %r", line)
                     continue
                 if "error" in progress:
@@ -601,7 +618,7 @@ class Repo2Docker(Application):
         self.hostname = host_name
 
         if not self.run_cmd:
-            port = str(self._get_free_port())
+            port = str(_get_free_port())
             self.port = port
             # To use the option --NotebookApp.custom_display_url
             # make sure the base-notebook image is updated:
@@ -690,18 +707,6 @@ class Repo2Docker(Application):
             if exit_code:
                 sys.exit(exit_code)
 
-    def _get_free_port(self):
-        """
-        Hacky method to get a free random port on local host
-        """
-        import socket
-
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(("", 0))
-        port = s.getsockname()[1]
-        s.close()
-        return port
-
     def find_image(self):
         # if this is a dry run it is Ok for dockerd to be unreachable so we
         # always return False for dry runs.
@@ -719,6 +724,8 @@ class Repo2Docker(Application):
         """
         Build docker image
         """
+        docker_client = None
+
         # Check if r2d can connect to docker daemon
         if not self.dry_run:
             try:
@@ -812,7 +819,7 @@ class Repo2Docker(Application):
                         extra=dict(phase="building"),
                     )
 
-                    for l in picked_buildpack.build(
+                    for build_result in picked_buildpack.build(
                         docker_client,
                         self.output_image_spec,
                         self.build_memory_limit,
@@ -821,19 +828,19 @@ class Repo2Docker(Application):
                         self.extra_build_kwargs,
                     ):
                         if docker_client.string_output:
-                            self.log.info(l, extra=dict(phase="building"))
+                            self.log.info(build_result, extra=dict(phase="building"))
                         # else this is Docker output
-                        elif "stream" in l:
-                            self.log.info(l["stream"], extra=dict(phase="building"))
-                        elif "error" in l:
-                            self.log.info(l["error"], extra=dict(phase="failure"))
-                            raise BuildError(l["error"])
-                        elif "status" in l:
+                        elif "stream" in build_result:
+                            self.log.info(build_result["stream"], extra=dict(phase="building"))
+                        elif "error" in build_result:
+                            self.log.info(build_result["error"], extra=dict(phase="failure"))
+                            raise BuildError(build_result["error"])
+                        elif "status" in build_result:
                             self.log.info(
                                 "Fetching base image...\r", extra=dict(phase="building")
                             )
                         else:
-                            self.log.info(json.dumps(l), extra=dict(phase="building"))
+                            self.log.info(json.dumps(build_result), extra=dict(phase="building"))
 
         finally:
             # Cleanup checkout if necessary

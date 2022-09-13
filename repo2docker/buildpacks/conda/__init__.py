@@ -36,6 +36,7 @@ class CondaBuildPack(BaseImage):
     _nb_requirements_file = ""
 
     _python_version = ""
+    _r_version = ""
 
     def get_build_env(self):
         """Return environment variables to be set.
@@ -250,7 +251,7 @@ class CondaBuildPack(BaseImage):
 
         Version information below the minor level is dropped.
         """
-        if not hasattr(self, "_python_version"):
+        if not self._python_version:
             py_version = None
             env = self.environment_yaml
             for dep in env.get("dependencies", []):
@@ -280,8 +281,7 @@ class CondaBuildPack(BaseImage):
         or a Falsy empty string '' if not found.
 
         """
-        if not hasattr(self, "_r_version"):
-            self._r_version = ""
+        if not self._r_version:
             env = self.environment_yaml
             for dep in env.get("dependencies", []):
                 if not isinstance(dep, str):
