@@ -1,6 +1,7 @@
 # AUTO GENERATED FROM environment.yml, DO NOT MANUALLY MODIFY
-# Generated on 2022-09-13 07:37:46 UTC
+# Generated on 2022-09-13 10:43:14 UTC
 channels:
 - conda-forge
 dependencies:
 - python=3.8.*
+- pip
