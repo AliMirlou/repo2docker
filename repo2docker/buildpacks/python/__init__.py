@@ -26,7 +26,6 @@ class PythonBuildPack(CondaBuildPack):
             return self._python_version
 
         py_version_info = runtime.split("-", 1)[1].split(".")
-        py_version = ""
         if len(py_version_info) == 1:
             py_version = self.major_pythons[py_version_info[0]]
         else:
