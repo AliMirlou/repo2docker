@@ -227,7 +227,7 @@ class BuildPack:
 
     def get_base_image(self):
         """Image name to use as base."""
-        return "buildpack-deps:bionic"
+        return "buildpack-deps:jammy"
 
     def get_packages(self):
         """
