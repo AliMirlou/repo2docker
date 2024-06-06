@@ -4,6 +4,7 @@ Base classes for repo2docker ContentProviders
 ContentProviders accept a `spec` of various kinds, and
 provide the contents from the spec to a given output directory.
 """
+
 import logging
 import os
 
@@ -68,6 +69,6 @@ class Local(ContentProvider):
 
     def fetch(self, spec, output_dir, yield_output=False):
         # nothing to be done if your content is already in the output directory
-        msg = "Local content provider assumes {} == {}".format(spec["path"], output_dir)
+        msg = f'Local content provider assumes {spec["path"]} == {output_dir}'
         assert output_dir == spec["path"], msg
-        yield "Using local repo {}.\n".format(spec["path"])
+        yield f'Using local repo {spec["path"]}.\n'
