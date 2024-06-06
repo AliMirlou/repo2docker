@@ -6,13 +6,12 @@ container requires a specific repository and commit to be checked out,
 and that is the only thing that is tested.
 
 """
+
 import os
 import subprocess
-
 from tempfile import TemporaryDirectory
 
 from repo2docker.app import Repo2Docker
-
 
 URL = "https://github.com/binderhub-ci-repos/repo2docker-ci-clone-depth"
 
